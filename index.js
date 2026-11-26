@@ -25,6 +25,7 @@ mongoose.connect(config.db)
 let router = require('./router');
 var app = express();
 app.use("/images", express.static(path.join(__dirname, "images")));
+app.get('/health', (req, res) => res.json({ ok: true }));
 app.use(router.init());
 
 const server = http.Server(app);
