@@ -30,10 +30,8 @@ const UsersRouter = () => {
       }
       console.log("Create user");
       Users.create(body)
-        .then((user) => {
-          res.status(200);
-          res.send();
-          next();
+        .then(() => {
+          res.status(201).json({ message: "User created successfully" });
         })
         .catch((err) => {
           console.log("erro", err);
