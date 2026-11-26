@@ -4,6 +4,15 @@ const Users = require("../data/users");
 const cookieParser = require('cookie-parser');
 const VerifyToken = require('../middleware/token');
 
+function setAuthCookie(res, token) {
+  const isProduction = process.env.NODE_ENV === "production";
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+  });
+}
+
 function AuthRouter() {
   let router = express();
 
@@ -53,14 +62,7 @@ function AuthRouter() {
         return Users.createToken(user);
       })
       .then((response) => {
-        console.log('response', response)
-        const isProduction = process.env.NODE_ENV === "production";
-        // The httpOnly: true setting means that the cookie can’t be read using JavaScript but can still be sent back to the server in HTTP requests
-        res.cookie("token", response.token, {
-          httpOnly: true,
-          secure: isProduction,
-          sameSite: isProduction ? "none" : "lax",
-        });
+        setAuthCookie(res, response.token);
         res.status(200);
         res.send(response);
       })
@@ -70,8 +72,59 @@ function AuthRouter() {
       });
   });
 
+  router.route("/qr-login").post(function (req, res) {
+    const { qrToken, expectedRole } = req.body;
+
+    if (typeof qrToken !== "string" || !qrToken) {
+      return res.status(400).json({ auth: false, message: "QR token is required" });
+    }
+
+    Users.verifyQrToken(qrToken)
+      .then(({ id }) => Users.findUserById(id))
+      .then((user) => {
+        if (!user) {
+          const error = new Error("QR code user not found");
+          error.status = 401;
+          throw error;
+        }
+
+        const isAdmin = user.role.scopes.includes("admin");
+        const roleMatches =
+          !expectedRole ||
+          (expectedRole === "admin" ? isAdmin : !isAdmin);
+
+        if (!roleMatches) {
+          const error = new Error("Use the correct login form for this account");
+          error.status = 403;
+          throw error;
+        }
+
+        return Users.createToken(user);
+      })
+      .then((response) => {
+        setAuthCookie(res, response.token);
+        res.status(200).json(response);
+      })
+      .catch((err) => {
+        console.error("QR login failed", err);
+        const status = err.status || 500;
+        const message =
+          status === 401
+            ? "Invalid or expired QR code"
+            : status === 403
+              ? "Use the correct login form for this account"
+              : "Unable to complete QR login";
+        res.status(status).json({ auth: false, message });
+      });
+  });
+
   router.use(cookieParser()); // Adicionar esta verificação
   router.use(VerifyToken); // Adicionar esta verificação
+
+  router.route("/qr-token").post(function (req, res) {
+    res.set("Cache-Control", "no-store");
+    res.status(200).json({ qrToken: Users.createQrToken(req.id) });
+  });
 
   router.route("/logout").get(function (req, res, next) {
     // The httpOnly: true setting means that the cookie can’t be read using JavaScript but can still be sent back to the server in HTTP requests

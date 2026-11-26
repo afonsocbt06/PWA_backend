@@ -7,7 +7,9 @@ function UserService(UserModel) {
   let service = {
     create,
     createToken,
+    createQrToken,
     verifyToken,
+    verifyQrToken,
     findUser,
     findAll,
     findUserById,
@@ -43,11 +45,36 @@ function UserService(UserModel) {
     return { auth: true, token, role: user.role.scopes };
   }
 
+  function createQrToken(userId) {
+    return jwt.sign(
+      { id: userId, purpose: "qr_login" },
+      config.secret,
+      { expiresIn: 60 },
+    );
+  }
+
   function verifyToken(token) {
     return new Promise((resolve, reject) => {
       jwt.verify(token, config.secret, (err, decoded) => {
         if (err) {
           reject(err);
+        }
+        return resolve(decoded);
+      });
+    });
+  }
+
+  function verifyQrToken(token) {
+    return new Promise((resolve, reject) => {
+      jwt.verify(token, config.secret, (err, decoded) => {
+        if (err) {
+          err.status = 401;
+          return reject(err);
+        }
+        if (decoded.purpose !== "qr_login") {
+          const error = new Error("Invalid QR login token");
+          error.status = 401;
+          return reject(error);
         }
         return resolve(decoded);
       });

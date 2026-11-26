@@ -29,6 +29,13 @@ let UserSchema = new Schema({
   ],
 });
 
+UserSchema.set("toJSON", {
+  transform: (doc, ret) => {
+    delete ret.password;
+    return ret;
+  },
+});
+
 // the schema is useless so far
 // we need to create a model using it
 let User = mongoose.model("User", UserSchema);
