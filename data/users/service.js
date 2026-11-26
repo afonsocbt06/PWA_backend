@@ -12,7 +12,7 @@ function UserService(UserModel) {
     findAll,
     findUserById,
     autorize,
-    update
+    update,
   };
 
   function create(user) {
@@ -32,20 +32,23 @@ function UserService(UserModel) {
   }
 
   function createToken(user) {
-    let token = jwt.sign({ id: user._id, name: user.name, role: user.role.scopes}, config.secret, {
-      expiresIn: config.expiresPassword,
-    });
+    let token = jwt.sign(
+      { id: user._id, name: user.name, role: user.role.scopes },
+      config.secret,
+      {
+        expiresIn: config.expiresPassword,
+      },
+    );
 
-    return { auth: true, token };
+    return { auth: true, token, role: user.role.scopes };
   }
-
 
   function verifyToken(token) {
     return new Promise((resolve, reject) => {
       jwt.verify(token, config.secret, (err, decoded) => {
         if (err) {
           reject(err);
-        }     
+        }
         return resolve(decoded);
       });
     });
@@ -58,19 +61,19 @@ function UserService(UserModel) {
         if (err) reject(err);
 
         resolve({
-            message: 'User saved',
-            user: model,
+          message: "User saved",
+          user: model,
         });
       });
     });
   }
 
   function update(id, user) {
-    console.log('user', user);
+    console.log("user", user);
     return new Promise(function (resolve, reject) {
-      console.log('user', user);
+      console.log("user", user);
       UserModel.findByIdAndUpdate(id, user, function (err, userUpdated) {
-        if (err) reject('Dont updated User');
+        if (err) reject("Dont updated User");
         resolve(userUpdated);
       });
     });
@@ -86,18 +89,23 @@ function UserService(UserModel) {
     });
   }
 
-  function findUser({ name, password }) {
+  function findUser({ name, password, isQrCode }) {
     return new Promise(function (resolve, reject) {
       UserModel.findOne({ name }, function (err, user) {
         if (err) reject(err);
         //object of all users
-
         if (!user) {
           reject("This data is wrong");
         }
         resolve(user);
       });
     }).then((user) => {
+      if (isQrCode) {
+        return comparePassword(password, user.password).then((match) => {
+          if (!match) return Promise.reject("User not valid");
+          return Promise.resolve(user);
+        });
+      }
       return comparePassword(password, user.password).then((match) => {
         if (!match) return Promise.reject("User not valid");
         return Promise.resolve(user);
@@ -141,11 +149,10 @@ function UserService(UserModel) {
 
   function autorize(scopes) {
     return (request, response, next) => {
-
       const { roleUser } = request; //Este request só tem o roleUser porque o adicionamos no ficheiro players
       console.log(roleUser);
       console.log(scopes);
-      const hasAutorization = scopes.some(scope => roleUser.includes(scope));
+      const hasAutorization = scopes.some((scope) => roleUser.includes(scope));
 
       if (roleUser && hasAutorization) {
         next();

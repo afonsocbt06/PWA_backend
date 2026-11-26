@@ -2,6 +2,7 @@ function MemberService(MemberModel) {
   let service = {
     create,
     findAll,
+    findById,
     findMemberByTaxNumber,
     update,
     removeById,
@@ -59,6 +60,24 @@ function MemberService(MemberModel) {
         if (!member) {
           reject("Member dont found");
         }
+        resolve(member);
+      });
+    });
+  }
+
+  function findById(id) {
+    return new Promise(function (resolve, reject) {
+      MemberModel.findOne({ _id: id }, function (err, member) {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        if (!member) {
+          reject("Member dont found");
+          return;
+        }
+
         resolve(member);
       });
     });

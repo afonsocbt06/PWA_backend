@@ -12,7 +12,7 @@ function AuthRouter() {
 
   router.route("/register").post(function (req, res, next) {
     const body = req.body;
-    
+
     const { role } = body;
 
     if(!role.scopes.includes('admin')) {
@@ -34,22 +34,37 @@ function AuthRouter() {
 
   router.route("/login").post(function (req, res, next) {
     let body = req.body;
+    const expectedRole = body.expectedRole;
 
     return Users.findUser(body)
+      .then((user) => {
+        const isAdmin = user.role.scopes.includes("admin");
+        const roleMatches =
+          !expectedRole ||
+          (expectedRole === "admin" ? isAdmin : !isAdmin);
+
+        if (!roleMatches) {
+          return Promise.reject("Use the correct login form for this account");
+        }
+
+        return user;
+      })
       .then((user) => {
         return Users.createToken(user);
       })
       .then((response) => {
         console.log('response', response)
         // The httpOnly: true setting means that the cookie can’t be read using JavaScript but can still be sent back to the server in HTTP requests
-        res.cookie("token", response.token, { httpOnly: true });
+        res.cookie("token", response.token, {
+          httpOnly: true,
+          sameSite: "lax",
+        });
         res.status(200);
         res.send(response);
       })
       .catch((err) => {
         console.log('error', err);
-        res.status(500);
-        res.send(err);
+        res.status(500).json({ auth: false, message: err });
       });
   });
 
@@ -67,13 +82,13 @@ function AuthRouter() {
   });
 
   router.route("/me").get(function(req, res, next)  {
-    return new Promise(() => {
-      res.status(202).send({ auth:true, decoded: req.roleUser });
-    })
-    .catch((err) => {
-      res.status(500);
-      res.send(err);
-      next();
+    res.status(200).send({
+      auth: true,
+      role: req.roleUser,
+      decoded: {
+        id: req.id,
+        role: req.roleUser,
+      },
     });
   });
 

@@ -56,6 +56,9 @@ const GamesRouter = () => {
               auth: true,
               ...games
             };
+
+
+            console.log("SEND GAMES:", JSON.stringify(response));
             res.send(response);
             next();
           })
