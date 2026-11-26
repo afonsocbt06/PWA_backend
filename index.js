@@ -7,6 +7,10 @@ const path = require("path");
 
 const config = require('./config');
 
+if (!config.db) {
+  throw new Error('MONGO_URI must be set in the environment.');
+}
+
 if (!config.secret) {
   throw new Error('JWT_SECRET must be set in the environment.');
 }
