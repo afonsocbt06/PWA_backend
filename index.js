@@ -15,8 +15,8 @@ if (!config.secret) {
   throw new Error('JWT_SECRET must be set in the environment.');
 }
 
-const hostname = "127.0.0.1";
-const port = 5000;
+const hostname = "0.0.0.0";
+const port = Number(process.env.PORT) || 5000;
 
 mongoose.connect(config.db)
 .then(() => console.log('Conection successful!'))
@@ -30,5 +30,5 @@ app.use(router.init());
 const server = http.Server(app);
 
 server.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}`);
+  console.log(`Server running on port ${port}`);
 });
